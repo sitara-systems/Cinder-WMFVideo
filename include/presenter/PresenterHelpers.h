@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // Helpers.cpp : Miscellaneous helpers.
-// 
+//
 // THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 // ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 // THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
@@ -20,28 +20,26 @@
 // Manages a list of allocated samples.
 //-----------------------------------------------------------------------------
 
-class SamplePool 
-{
-public:
+class SamplePool {
+   public:
     SamplePool();
     virtual ~SamplePool();
 
     HRESULT Initialize(VideoSampleList& samples);
     HRESULT Clear();
-   
-    HRESULT GetSample(IMFSample **ppSample);    // Does not block.
-    HRESULT ReturnSample(IMFSample *pSample);   
-    BOOL    AreSamplesPending();
 
-private:
-    CritSec                     m_lock;
+    HRESULT GetSample(IMFSample** ppSample);  // Does not block.
+    HRESULT ReturnSample(IMFSample* pSample);
+    BOOL AreSamplesPending();
 
-    VideoSampleList             m_VideoSampleQueue;         // Available queue
+   private:
+    CritSec m_lock;
 
-    BOOL                        m_bInitialized;
-    DWORD                       m_cPending;
+    VideoSampleList m_VideoSampleQueue;  // Available queue
+
+    BOOL m_bInitialized;
+    DWORD m_cPending;
 };
-
 
 //-----------------------------------------------------------------------------
 // ThreadSafeQueue template
@@ -49,28 +47,24 @@ private:
 //
 // T: COM interface type.
 //
-// This class is used by the scheduler. 
+// This class is used by the scheduler.
 //
 // Note: This class uses a critical section to protect the state of the queue.
 // With a little work, the scheduler could probably use a lock-free queue.
 //-----------------------------------------------------------------------------
 
 template <class T>
-class ThreadSafeQueue
-{
-public:
-    HRESULT Queue(T *p)
-    {
+class ThreadSafeQueue {
+   public:
+    HRESULT Queue(T* p) {
         AutoLock lock(m_lock);
         return m_list.InsertBack(p);
     }
 
-    HRESULT Dequeue(T **pp)
-    {
+    HRESULT Dequeue(T** pp) {
         AutoLock lock(m_lock);
 
-        if (m_list.IsEmpty())
-        {
+        if (m_list.IsEmpty()) {
             *pp = NULL;
             return S_FALSE;
         }
@@ -78,21 +72,17 @@ public:
         return m_list.RemoveFront(pp);
     }
 
-    HRESULT PutBack(T *p)
-    {
+    HRESULT PutBack(T* p) {
         AutoLock lock(m_lock);
         return m_list.InsertFront(p);
     }
 
-    void Clear() 
-    {
+    void Clear() {
         AutoLock lock(m_lock);
         m_list.Clear();
     }
 
-
-private:
-    CritSec         m_lock; 
-    ComPtrList<T>   m_list;
+   private:
+    CritSec m_lock;
+    ComPtrList<T> m_list;
 };
-
