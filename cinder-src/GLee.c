@@ -11724,8 +11724,8 @@ void __stdcall GLee_Lazy_glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN(GLuint
         glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN(rc, s, t, nx, ny, nz, x, y, z);
 }
 GLEEPFNGLREPLACEMENTCODEUITEXCOORD2FNORMAL3FVERTEX3FSUNPROC
-    GLeeFuncPtr_glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN =
-        GLee_Lazy_glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN;
+GLeeFuncPtr_glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN =
+    GLee_Lazy_glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN;
 #endif
 #ifndef GLEE_C_DEFINED_glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN
 #define GLEE_C_DEFINED_glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN
@@ -11737,8 +11737,8 @@ void __stdcall GLee_Lazy_glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN(const
         glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN(rc, tc, n, v);
 }
 GLEEPFNGLREPLACEMENTCODEUITEXCOORD2FNORMAL3FVERTEX3FVSUNPROC
-    GLeeFuncPtr_glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN =
-        GLee_Lazy_glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN;
+GLeeFuncPtr_glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN =
+    GLee_Lazy_glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN;
 #endif
 #ifndef GLEE_C_DEFINED_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN
 #define GLEE_C_DEFINED_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN
@@ -11759,8 +11759,8 @@ void __stdcall GLee_Lazy_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN
         glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN(rc, s, t, r, g, b, a, nx, ny, nz, x, y, z);
 }
 GLEEPFNGLREPLACEMENTCODEUITEXCOORD2FCOLOR4FNORMAL3FVERTEX3FSUNPROC
-    GLeeFuncPtr_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN =
-        GLee_Lazy_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN;
+GLeeFuncPtr_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN =
+    GLee_Lazy_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN;
 #endif
 #ifndef GLEE_C_DEFINED_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN
 #define GLEE_C_DEFINED_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN
@@ -11773,8 +11773,8 @@ void __stdcall GLee_Lazy_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSU
         glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN(rc, tc, c, n, v);
 }
 GLEEPFNGLREPLACEMENTCODEUITEXCOORD2FCOLOR4FNORMAL3FVERTEX3FVSUNPROC
-    GLeeFuncPtr_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN =
-        GLee_Lazy_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN;
+GLeeFuncPtr_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN =
+    GLee_Lazy_glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN;
 #endif
 #endif
 
@@ -18457,8 +18457,8 @@ void __stdcall GLee_Lazy_glNamedRenderbufferStorageMultisampleCoverageEXT(GLuint
                                                          width, height);
 }
 GLEEPFNGLNAMEDRENDERBUFFERSTORAGEMULTISAMPLECOVERAGEEXTPROC
-    GLeeFuncPtr_glNamedRenderbufferStorageMultisampleCoverageEXT =
-        GLee_Lazy_glNamedRenderbufferStorageMultisampleCoverageEXT;
+GLeeFuncPtr_glNamedRenderbufferStorageMultisampleCoverageEXT =
+    GLee_Lazy_glNamedRenderbufferStorageMultisampleCoverageEXT;
 #endif
 #ifndef GLEE_C_DEFINED_glNamedFramebufferTextureEXT
 #define GLEE_C_DEFINED_glNamedFramebufferTextureEXT

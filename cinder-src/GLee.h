@@ -54,8 +54,8 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 #include <GL/gl.h>
+#include <windows.h>
 #elif defined(__APPLE__) || defined(__APPLE_CC__)
 #define GL_GLEXT_LEGACY
 #include <OpenGL/gl.h>
