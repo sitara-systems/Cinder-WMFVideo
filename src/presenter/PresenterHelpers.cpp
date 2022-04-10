@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // Helpers.cpp : Miscellaneous helpers.
-//
+// 
 // THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 // ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 // THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
@@ -14,13 +14,20 @@
 
 #include "EVRPresenter.h"
 
+
 //-----------------------------------------------------------------------------
 // SamplePool class
 //-----------------------------------------------------------------------------
 
-SamplePool::SamplePool() : m_bInitialized(FALSE), m_cPending(0) {}
+SamplePool::SamplePool() : m_bInitialized(FALSE), m_cPending(0)
+{
 
-SamplePool::~SamplePool() {}
+}
+
+SamplePool::~SamplePool()
+{
+}
+
 
 //-----------------------------------------------------------------------------
 // GetSample
@@ -29,19 +36,22 @@ SamplePool::~SamplePool() {}
 // returns MF_E_SAMPLEALLOCATOR_EMPTY.
 //-----------------------------------------------------------------------------
 
-HRESULT SamplePool::GetSample(IMFSample** ppSample) {
+HRESULT SamplePool::GetSample(IMFSample **ppSample)
+{
     AutoLock lock(m_lock);
 
-    if (!m_bInitialized) {
+    if (!m_bInitialized)
+    {
         return MF_E_NOT_INITIALIZED;
     }
 
-    if (m_VideoSampleQueue.IsEmpty()) {
+    if (m_VideoSampleQueue.IsEmpty())
+    {
         return MF_E_SAMPLEALLOCATOR_EMPTY;
     }
 
     HRESULT hr = S_OK;
-    IMFSample* pSample = NULL;
+    IMFSample *pSample = NULL;
 
     // Get a sample from the allocated queue.
 
@@ -68,10 +78,12 @@ done:
 // Returns a sample to the pool.
 //-----------------------------------------------------------------------------
 
-HRESULT SamplePool::ReturnSample(IMFSample* pSample) {
+HRESULT SamplePool::ReturnSample(IMFSample *pSample) 
+{
     AutoLock lock(m_lock);
 
-    if (!m_bInitialized) {
+    if (!m_bInitialized)
+    {
         return MF_E_NOT_INITIALIZED;
     }
 
@@ -91,15 +103,18 @@ done:
 // Returns TRUE if any samples are in use.
 //-----------------------------------------------------------------------------
 
-BOOL SamplePool::AreSamplesPending() {
+BOOL SamplePool::AreSamplesPending()
+{
     AutoLock lock(m_lock);
 
-    if (!m_bInitialized) {
+    if (!m_bInitialized)
+    {
         return FALSE;
     }
 
     return (m_cPending > 0);
 }
+
 
 //-----------------------------------------------------------------------------
 // Initialize
@@ -107,19 +122,22 @@ BOOL SamplePool::AreSamplesPending() {
 // Initializes the pool with a list of samples.
 //-----------------------------------------------------------------------------
 
-HRESULT SamplePool::Initialize(VideoSampleList& samples) {
+HRESULT SamplePool::Initialize(VideoSampleList& samples)
+{
     AutoLock lock(m_lock);
 
-    if (m_bInitialized) {
+    if (m_bInitialized)
+    {
         return MF_E_INVALIDREQUEST;
     }
 
     HRESULT hr = S_OK;
-    IMFSample* pSample = NULL;
+    IMFSample *pSample = NULL;
 
     // Move these samples into our allocated queue.
     VideoSampleList::POSITION pos = samples.FrontPosition();
-    while (pos != samples.EndPosition()) {
+    while (pos != samples.EndPosition())
+    {
         CHECK_HR(hr = samples.GetItemPos(pos, &pSample));
         CHECK_HR(hr = m_VideoSampleQueue.InsertBack(pSample));
 
@@ -136,13 +154,15 @@ done:
     return hr;
 }
 
+
 //-----------------------------------------------------------------------------
 // Clear
 //
 // Releases all samples.
 //-----------------------------------------------------------------------------
 
-HRESULT SamplePool::Clear() {
+HRESULT SamplePool::Clear()
+{
     HRESULT hr = S_OK;
 
     AutoLock lock(m_lock);
@@ -152,3 +172,4 @@ HRESULT SamplePool::Clear() {
     m_cPending = 0;
     return S_OK;
 }
+

@@ -1,11 +1,11 @@
-// ciWMFVideoplayer addon written by Philippe Laulheret for Second Story (secondstory.com)
-// Based upon Windows SDK samples
-// MIT Licensing
+//ciWMFVideoplayer addon written by Philippe Laulheret for Second Story (secondstory.com)
+//Based upon Windows SDK samples
+//MIT Licensing
 
 //////////////////////////////////////////////////////////////////////////
 //
 // PresentEngine.cpp: Defines the D3DPresentEngine object.
-//
+// 
 // THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 // ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 // THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
@@ -17,164 +17,187 @@
 //////////////////////////////////////////////////////////////////////////
 
 #include "EVRPresenter.h"
-#include "cinder/Log.h"
 #include "cinder/gl/gl.h"
+#include "cinder/Log.h"
 #include "glad/glad_wgl.h"
 
-HRESULT FindAdapter(IDirect3D9* pD3D9, HMONITOR hMonitor, UINT* puAdapterID);
+HRESULT FindAdapter(IDirect3D9 *pD3D9, HMONITOR hMonitor, UINT *puAdapterID);
 
 //-----------------------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------------------
 
-D3DPresentEngine::D3DPresentEngine(HRESULT& hr)
-    : m_hwnd(NULL),
-      m_DeviceResetToken(0),
-      m_pD3D9(NULL),
-      m_pDevice(NULL),
-      m_pDeviceManager(NULL),
-      m_pSurfaceRepaint(NULL),
-      gl_handleD3D(NULL),
-      d3d_shared_texture(NULL),
-      d3d_shared_surface(NULL),
-      gl_handle(NULL) {
+D3DPresentEngine::D3DPresentEngine(HRESULT& hr) : 
+    m_hwnd(NULL),
+    m_DeviceResetToken(0),
+    m_pD3D9(NULL),
+    m_pDevice(NULL),
+    m_pDeviceManager(NULL),
+    m_pSurfaceRepaint(NULL),
+	gl_handleD3D(NULL),
+	d3d_shared_texture(NULL),
+	d3d_shared_surface(NULL),
+	gl_handle(NULL)
+{
     SetRectEmpty(&m_rcDestRect);
 
     ZeroMemory(&m_DisplayMode, sizeof(m_DisplayMode));
 
     hr = InitializeD3D();
 
-    if (SUCCEEDED(hr)) {
-        hr = CreateD3DDevice();
+    if (SUCCEEDED(hr))
+    {
+       hr = CreateD3DDevice();
     }
 
-    // bool nvdxInteropEnabled = false;
-    // if(wglewIsSupported("WGL_NV_DX_interop"))
-    //{
-    //	nvdxInteropEnabled = true;
-    // }
+	//bool nvdxInteropEnabled = false;
+	//if(wglewIsSupported("WGL_NV_DX_interop"))
+	//{
+	//	nvdxInteropEnabled = true;
+	//}
 }
+
 
 //-----------------------------------------------------------------------------
 // Destructor
 //-----------------------------------------------------------------------------
 
-D3DPresentEngine::~D3DPresentEngine() {
-    if (gl_handleD3D) {
-        releaseSharedTexture();
 
-        CI_LOG_I("Killing present engine.....");
-        if (wglDXCloseDeviceNV(gl_handleD3D)) {
-            CI_LOG_I("SUCCESS");
-        } else {
-            CI_LOG_I("FAILED closing handle");
-        }
-    }
+D3DPresentEngine::~D3DPresentEngine()
+{
+	if (gl_handleD3D) {
+		releaseSharedTexture() ;
+
+		CI_LOG_I("Killing present engine.....");
+		if (wglDXCloseDeviceNV(gl_handleD3D)) 
+		{
+			CI_LOG_I( "SUCCESS" );
+		}
+		else {
+			CI_LOG_I( "FAILED closing handle" );
+		}
+	}
     SAFE_RELEASE(m_pDevice);
     SAFE_RELEASE(m_pSurfaceRepaint);
     SAFE_RELEASE(m_pDeviceManager);
     SAFE_RELEASE(m_pD3D9);
 }
 
+
 //-----------------------------------------------------------------------------
 // Texture sharing code
 //-----------------------------------------------------------------------------
 
-bool D3DPresentEngine::createSharedTexture(int w, int h, int textureID) {
-    _w = w;
-    _h = h;
-    if (gl_handleD3D == NULL)
-        gl_handleD3D = wglDXOpenDeviceNV(m_pDevice);
+bool D3DPresentEngine::createSharedTexture(int w, int h, int textureID)
+{
+	_w = w;
+	_h = h;
+	if (gl_handleD3D == NULL ) 	gl_handleD3D = wglDXOpenDeviceNV(m_pDevice);
 
-    if (!gl_handleD3D) {
-        CI_LOG_E("Opening the shared device failed - Create SharedTexture Failed");
-        return false;
-    }
-    gl_name = textureID;
-    HANDLE sharedHandle =
-        NULL;  // We need to create a shared handle for the ressource, otherwise the extension fails on ATI/Intel cards
-    HRESULT hr = m_pDevice->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT,
-                                          &d3d_shared_texture, &sharedHandle);
+	if (!gl_handleD3D)
+	{
+		CI_LOG_E( "Opening the shared device failed - Create SharedTexture Failed" );
+		return false;
+	}
+	gl_name=textureID;
+	HANDLE sharedHandle = NULL; //We need to create a shared handle for the ressource, otherwise the extension fails on ATI/Intel cards
+	HRESULT hr = m_pDevice->CreateTexture(w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&d3d_shared_texture,&sharedHandle);
 
-    if (FAILED(hr)) {
-        CI_LOG_E("Error creating D3DTexture");
-        return false;
-    }
+	if (FAILED(hr))
+	{
+		CI_LOG_E( "Error creating D3DTexture" );
+		return false;
+	}
 
-    if (!sharedHandle) {
-        CI_LOG_E("Error creating D3D shared handle");
-        return false;
-    }
+	if (!sharedHandle)
+	{
+		CI_LOG_E( "Error creating D3D shared handle" );
+		return false;
+	}
+	
+	wglDXSetResourceShareHandleNV(d3d_shared_texture,sharedHandle);
 
-    wglDXSetResourceShareHandleNV(d3d_shared_texture, sharedHandle);
+	d3d_shared_texture->GetSurfaceLevel(0,&d3d_shared_surface);
+		
+	gl_handle = wglDXRegisterObjectNV(gl_handleD3D, d3d_shared_texture,
+		gl_name,
+		GL_TEXTURE_RECTANGLE,
+		WGL_ACCESS_READ_ONLY_NV);
 
-    d3d_shared_texture->GetSurfaceLevel(0, &d3d_shared_surface);
-
-    gl_handle =
-        wglDXRegisterObjectNV(gl_handleD3D, d3d_shared_texture, gl_name, GL_TEXTURE_RECTANGLE, WGL_ACCESS_READ_ONLY_NV);
-
-    if (!gl_handle) {
-        CI_LOG_E("Opening the shared texture failed - Create SharedTexture Failed");
-        return false;
-    }
-    return true;
+	if (!gl_handle) 
+	{
+		CI_LOG_E("Opening the shared texture failed - Create SharedTexture Failed");
+		return false;
+	}
+	return true;
 }
 
-void D3DPresentEngine::releaseSharedTexture() {
-    if (!gl_handleD3D || !d3d_shared_surface || !d3d_shared_texture)
-        return;
-    wglDXUnlockObjectsNV(gl_handleD3D, 1, &gl_handle);
-    // wglDXUnregisterObjectNV(gl_handleD3D,gl_handle);	// Apparently causes access violations?
-    // glDeleteTextures(1, &gl_name);
-    SAFE_RELEASE(d3d_shared_surface);
-    SAFE_RELEASE(d3d_shared_texture);
+void D3DPresentEngine::releaseSharedTexture()
+{
+	if (!gl_handleD3D || !d3d_shared_surface || !d3d_shared_texture) return;
+	wglDXUnlockObjectsNV(gl_handleD3D, 1, &gl_handle);
+	//wglDXUnregisterObjectNV(gl_handleD3D,gl_handle);	// Apparently causes access violations?
+	//glDeleteTextures(1, &gl_name);
+	SAFE_RELEASE(d3d_shared_surface);
+	SAFE_RELEASE(d3d_shared_texture);
+
 }
-bool D3DPresentEngine::lockSharedTexture() {
-    if (!gl_handleD3D)
-        return false;
-    if (!gl_handle)
-        return false;
-    return wglDXLockObjectsNV(gl_handleD3D, 1, &gl_handle);
+bool D3DPresentEngine::lockSharedTexture()
+{
+	if (!gl_handleD3D) return false;
+	if (!gl_handle) return false;
+	return wglDXLockObjectsNV(gl_handleD3D, 1, &gl_handle);
 }
 
-bool D3DPresentEngine::unlockSharedTexture() {
-    if (!gl_handleD3D)
-        return false;
-    if (!gl_handle)
-        return false;
-    return wglDXUnlockObjectsNV(gl_handleD3D, 1, &gl_handle);
+bool D3DPresentEngine::unlockSharedTexture()
+{
+	if (!gl_handleD3D) return false;
+	if (!gl_handle) return false;
+	return wglDXUnlockObjectsNV(gl_handleD3D, 1, &gl_handle);
 }
+
+
+
+
 
 //-----------------------------------------------------------------------------
 // GetService
 //
 // Returns a service interface from the presenter engine.
-// The presenter calls this method from inside it's implementation of
+// The presenter calls this method from inside it's implementation of 
 // IMFGetService::GetService.
 //
-// Classes that derive from D3DPresentEngine can override this method to return
-// other interfaces. If you override this method, call the base method from the
+// Classes that derive from D3DPresentEngine can override this method to return 
+// other interfaces. If you override this method, call the base method from the 
 // derived class.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::GetService(REFGUID guidService, REFIID riid, void** ppv) {
+HRESULT D3DPresentEngine::GetService(REFGUID guidService, REFIID riid, void** ppv)
+{
     assert(ppv != NULL);
 
     HRESULT hr = S_OK;
 
-    if (riid == __uuidof(IDirect3DDeviceManager9)) {
-        if (m_pDeviceManager == NULL) {
+    if (riid == __uuidof(IDirect3DDeviceManager9))
+    {
+        if (m_pDeviceManager == NULL)
+        {
             hr = MF_E_UNSUPPORTED_SERVICE;
-        } else {
+        }
+        else
+        {
             *ppv = m_pDeviceManager;
             m_pDeviceManager->AddRef();
         }
-    } else {
+    }
+    else
+    {
         hr = MF_E_UNSUPPORTED_SERVICE;
     }
 
     return hr;
 }
+
 
 //-----------------------------------------------------------------------------
 // CheckFormat
@@ -182,7 +205,8 @@ HRESULT D3DPresentEngine::GetService(REFGUID guidService, REFIID riid, void** pp
 // Queries whether the D3DPresentEngine can use a specified Direct3D format.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::CheckFormat(D3DFORMAT format) {
+HRESULT D3DPresentEngine::CheckFormat(D3DFORMAT format)
+{
     HRESULT hr = S_OK;
 
     UINT uAdapter = D3DADAPTER_DEFAULT;
@@ -191,31 +215,36 @@ HRESULT D3DPresentEngine::CheckFormat(D3DFORMAT format) {
     D3DDISPLAYMODE mode;
     D3DDEVICE_CREATION_PARAMETERS params;
 
-    if (m_pDevice) {
+    if (m_pDevice)
+    {
         CHECK_HR(hr = m_pDevice->GetCreationParameters(&params));
 
         uAdapter = params.AdapterOrdinal;
         type = params.DeviceType;
+
     }
 
     CHECK_HR(hr = m_pD3D9->GetAdapterDisplayMode(uAdapter, &mode));
 
-    CHECK_HR(hr = m_pD3D9->CheckDeviceType(uAdapter, type, mode.Format, format, TRUE));
+    CHECK_HR(hr = m_pD3D9->CheckDeviceType(uAdapter, type, mode.Format, format, TRUE)); 
 
 done:
     return hr;
 }
 
+
+
 //-----------------------------------------------------------------------------
 // SetVideoWindow
-//
+// 
 // Sets the window where the video is drawn.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::SetVideoWindow(HWND hwnd) {
+HRESULT D3DPresentEngine::SetVideoWindow(HWND hwnd)
+{
     // Assertions: EVRCustomPresenter checks these cases.
     assert(IsWindow(hwnd));
-    assert(hwnd != m_hwnd);
+    assert(hwnd != m_hwnd);     
 
     HRESULT hr = S_OK;
 
@@ -233,13 +262,15 @@ HRESULT D3DPresentEngine::SetVideoWindow(HWND hwnd) {
 
 //-----------------------------------------------------------------------------
 // SetDestinationRect
-//
+// 
 // Sets the region within the video window where the video is drawn.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::SetDestinationRect(const RECT& rcDest) {
-    if (EqualRect(&rcDest, &m_rcDestRect)) {
-        return S_OK;  // No change.
+HRESULT D3DPresentEngine::SetDestinationRect(const RECT& rcDest)
+{
+    if (EqualRect(&rcDest, &m_rcDestRect))
+    {
+        return S_OK; // No change.
     }
 
     HRESULT hr = S_OK;
@@ -253,11 +284,13 @@ HRESULT D3DPresentEngine::SetDestinationRect(const RECT& rcDest) {
     return hr;
 }
 
+
+
 //-----------------------------------------------------------------------------
 // CreateVideoSamples
-//
+// 
 // Creates video samples based on a specified media type.
-//
+// 
 // pFormat: Media type that describes the video format.
 // videoSampleQueue: List that will contain the video samples.
 //
@@ -267,21 +300,27 @@ HRESULT D3DPresentEngine::SetDestinationRect(const RECT& rcDest) {
 // D3DPresentEngine renders the video frame by presenting the swap chain.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::CreateVideoSamples(IMFMediaType* pFormat, VideoSampleList& videoSampleQueue) {
-    if (m_hwnd == NULL) {
+HRESULT D3DPresentEngine::CreateVideoSamples(
+    IMFMediaType *pFormat, 
+    VideoSampleList& videoSampleQueue
+    )
+{
+    if (m_hwnd == NULL)
+    {
         return MF_E_INVALIDREQUEST;
     }
 
-    if (pFormat == NULL) {
+    if (pFormat == NULL)
+    {
         return MF_E_UNEXPECTED;
     }
 
     HRESULT hr = S_OK;
     D3DPRESENT_PARAMETERS pp;
 
-    IDirect3DSwapChain9* pSwapChain = NULL;  // Swap chain
-    IMFSample* pVideoSample = NULL;          // Sampl
-
+    IDirect3DSwapChain9 *pSwapChain = NULL;    // Swap chain
+    IMFSample *pVideoSample = NULL;            // Sampl
+    
     AutoLock lock(m_ObjectLock);
 
     ReleaseResources();
@@ -292,10 +331,12 @@ HRESULT D3DPresentEngine::CreateVideoSamples(IMFMediaType* pFormat, VideoSampleL
     UpdateDestRect();
 
     // Create the video samples.
-    for (int i = 0; i < PRESENTER_BUFFER_COUNT; i++) {
+    for (int i = 0; i < PRESENTER_BUFFER_COUNT; i++)
+    {
         // Create a new swap chain.
         CHECK_HR(hr = m_pDevice->CreateAdditionalSwapChain(&pp, &pSwapChain));
 
+        
         // Create the video sample from the swap chain.
         CHECK_HR(hr = CreateD3DSample(pSwapChain, &pVideoSample));
 
@@ -315,37 +356,43 @@ HRESULT D3DPresentEngine::CreateVideoSamples(IMFMediaType* pFormat, VideoSampleL
     CHECK_HR(hr = OnCreateVideoSamples(pp));
 
 done:
-    if (FAILED(hr)) {
+    if (FAILED(hr))
+    {
         ReleaseResources();
     }
-
+        
     SAFE_RELEASE(pSwapChain);
     SAFE_RELEASE(pVideoSample);
     return hr;
 }
 
+
+
 //-----------------------------------------------------------------------------
 // ReleaseResources
-//
-// Released Direct3D resources used by this object.
+// 
+// Released Direct3D resources used by this object. 
 //-----------------------------------------------------------------------------
 
-void D3DPresentEngine::ReleaseResources() {
+void D3DPresentEngine::ReleaseResources()
+{
     // Let the derived class release any resources it created.
     OnReleaseResources();
 
     SAFE_RELEASE(m_pSurfaceRepaint);
 }
 
+
 //-----------------------------------------------------------------------------
 // CheckDeviceState
-//
+// 
 // Tests the Direct3D device state.
 //
 // pState: Receives the state of the device (OK, reset, removed)
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::CheckDeviceState(DeviceState* pState) {
+HRESULT D3DPresentEngine::CheckDeviceState(DeviceState *pState)
+{
     HRESULT hr = S_OK;
 
     AutoLock lock(m_ObjectLock);
@@ -355,32 +402,33 @@ HRESULT D3DPresentEngine::CheckDeviceState(DeviceState* pState) {
 
     *pState = DeviceOK;
 
-    switch (hr) {
-        case S_OK:
-        case S_PRESENT_OCCLUDED:
-        case S_PRESENT_MODE_CHANGED:
-            // state is DeviceOK
-            hr = S_OK;
-            break;
+    switch (hr)
+    {
+    case S_OK:
+    case S_PRESENT_OCCLUDED:
+      case S_PRESENT_MODE_CHANGED:
+        // state is DeviceOK
+        hr = S_OK;
+        break;
 
-        case D3DERR_DEVICELOST:
-        case D3DERR_DEVICEHUNG:
-            // Lost/hung device. Destroy the device and create a new one.
-            CHECK_HR(hr = CreateD3DDevice());
-            *pState = DeviceReset;
-            hr = S_OK;
-            break;
+    case D3DERR_DEVICELOST:
+    case D3DERR_DEVICEHUNG:
+        // Lost/hung device. Destroy the device and create a new one.
+        CHECK_HR(hr = CreateD3DDevice());
+        *pState = DeviceReset;
+        hr = S_OK;
+        break;
 
-        case D3DERR_DEVICEREMOVED:
-            // This is a fatal error.
-            *pState = DeviceRemoved;
-            break;
+    case D3DERR_DEVICEREMOVED:
+        // This is a fatal error.
+        *pState = DeviceRemoved;
+        break;
 
-        case E_INVALIDARG:
-            // CheckDeviceState can return E_INVALIDARG if the window is not valid
-            // We'll assume that the window was destroyed; we'll recreate the device
-            // if the application sets a new window.
-            hr = S_OK;
+    case E_INVALIDARG:
+        // CheckDeviceState can return E_INVALIDARG if the window is not valid
+        // We'll assume that the window was destroyed; we'll recreate the device 
+        // if the application sets a new window.
+        hr = S_OK;
     }
 
 done:
@@ -392,33 +440,38 @@ done:
 //
 // Presents a video frame.
 //
-// pSample:  Pointer to the sample that contains the surface to present. If
+// pSample:  Pointer to the sample that contains the surface to present. If 
 //           this parameter is NULL, the method paints a black rectangle.
 // llTarget: Target presentation time.
 //
 // This method is called by the scheduler and/or the presenter.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::PresentSample(IMFSample* pSample, LONGLONG llTarget) {
+HRESULT D3DPresentEngine::PresentSample(IMFSample* pSample, LONGLONG llTarget)
+{
     HRESULT hr = S_OK;
 
     IMFMediaBuffer* pBuffer = NULL;
     IDirect3DSurface9* pSurface = NULL;
     IDirect3DSwapChain9* pSwapChain = NULL;
 
-    if (pSample) {
+    if (pSample)
+    {
         // Get the buffer from the sample.
         CHECK_HR(hr = pSample->GetBufferByIndex(0, &pBuffer));
 
         // Get the surface from the buffer.
         CHECK_HR(hr = MFGetService(pBuffer, MR_BUFFER_SERVICE, __uuidof(IDirect3DSurface9), (void**)&pSurface));
-    } else if (m_pSurfaceRepaint) {
+    }
+    else if (m_pSurfaceRepaint)
+    {
         // Redraw from the last surface.
         pSurface = m_pSurfaceRepaint;
         pSurface->AddRef();
     }
 
-    if (pSurface) {
+    if (pSurface)
+    {
         // Get the swap chain from the surface.
         CHECK_HR(hr = pSurface->GetContainer(__uuidof(IDirect3DSwapChain9), (LPVOID*)&pSwapChain));
 
@@ -427,7 +480,9 @@ HRESULT D3DPresentEngine::PresentSample(IMFSample* pSample, LONGLONG llTarget) {
 
         // Store this pointer in case we need to repaint the surface.
         CopyComPointer(m_pSurfaceRepaint, pSurface);
-    } else {
+    }
+    else
+    {
         // No surface. All we can do is paint a black rectangle.
         PaintFrameWithGDI();
     }
@@ -437,8 +492,10 @@ done:
     SAFE_RELEASE(pSurface);
     SAFE_RELEASE(pBuffer);
 
-    if (FAILED(hr)) {
-        if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET || hr == D3DERR_DEVICEHUNG) {
+    if (FAILED(hr))
+    {
+        if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET || hr == D3DERR_DEVICEHUNG)
+        {
             // We failed because the device was lost. Fill the destination rectangle.
             PaintFrameWithGDI();
 
@@ -447,7 +504,7 @@ done:
             // same thread that created the device. The Reset(Ex) method must be
             // called from the thread that created the device.
 
-            // The presenter will detect the state when it calls CheckDeviceState()
+            // The presenter will detect the state when it calls CheckDeviceState() 
             // on the next sample.
             hr = S_OK;
         }
@@ -455,17 +512,21 @@ done:
     return hr;
 }
 
+
+
 //-----------------------------------------------------------------------------
 // private/protected methods
 //-----------------------------------------------------------------------------
 
+
 //-----------------------------------------------------------------------------
 // InitializeD3D
-//
+// 
 // Initializes Direct3D and the Direct3D device manager.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::InitializeD3D() {
+HRESULT D3DPresentEngine::InitializeD3D()
+{
     HRESULT hr = S_OK;
 
     assert(m_pD3D9 == NULL);
@@ -483,33 +544,35 @@ done:
 
 //-----------------------------------------------------------------------------
 // CreateD3DDevice
-//
+// 
 // Creates the Direct3D device.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::CreateD3DDevice() {
-    HRESULT hr = S_OK;
-    HWND hwnd = NULL;
-    HMONITOR hMonitor = NULL;
-    UINT uAdapterID = D3DADAPTER_DEFAULT;
-    DWORD vp = 0;
+HRESULT D3DPresentEngine::CreateD3DDevice()
+{
+    HRESULT     hr = S_OK;
+    HWND        hwnd = NULL;
+    HMONITOR    hMonitor = NULL;
+    UINT        uAdapterID = D3DADAPTER_DEFAULT;
+    DWORD       vp = 0;
 
-    D3DCAPS9 ddCaps;
+    D3DCAPS9    ddCaps;
     ZeroMemory(&ddCaps, sizeof(ddCaps));
 
     IDirect3DDevice9Ex* pDevice = NULL;
 
     // Hold the lock because we might be discarding an exisiting device.
-    AutoLock lock(m_ObjectLock);
+    AutoLock lock(m_ObjectLock);    
 
-    if (!m_pD3D9 || !m_pDeviceManager) {
+    if (!m_pD3D9 || !m_pDeviceManager)
+    {
         return MF_E_NOT_INITIALIZED;
     }
 
     hwnd = GetDesktopWindow();
 
     // Note: The presenter creates additional swap chains to present the
-    // video frames. Therefore, it does not use the device's implicit
+    // video frames. Therefore, it does not use the device's implicit 
     // swap chain, so the size of the back buffer here is 1 x 1.
 
     D3DPRESENT_PARAMETERS pp;
@@ -525,7 +588,8 @@ HRESULT D3DPresentEngine::CreateD3DDevice() {
     pp.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
 
     // Find the monitor for this window.
-    if (m_hwnd) {
+    if (m_hwnd)
+    {
         hMonitor = MonitorFromWindow(m_hwnd, MONITOR_DEFAULTTONEAREST);
 
         // Find the corresponding adapter.
@@ -535,25 +599,37 @@ HRESULT D3DPresentEngine::CreateD3DDevice() {
     // Get the device caps for this adapter.
     CHECK_HR(hr = m_pD3D9->GetDeviceCaps(uAdapterID, D3DDEVTYPE_HAL, &ddCaps));
 
-    if (ddCaps.DevCaps & D3DDEVCAPS_HWTRANSFORMANDLIGHT) {
+    if(ddCaps.DevCaps & D3DDEVCAPS_HWTRANSFORMANDLIGHT)
+    {
         vp = D3DCREATE_HARDWARE_VERTEXPROCESSING;
-    } else {
-        CI_LOG_W("Software Cap, No bueno :P");
-        // printf("Software cap, no bueno\n");
+    }
+    else
+    {
+		CI_LOG_W("Software Cap, No bueno :P");
+		//printf("Software cap, no bueno\n");
         vp = D3DCREATE_SOFTWARE_VERTEXPROCESSING;
     }
 
     // Create the device.
-    CHECK_HR(
-        hr = m_pD3D9->CreateDeviceEx(uAdapterID, D3DDEVTYPE_HAL, pp.hDeviceWindow,
-                                     vp | D3DCREATE_NOWINDOWCHANGES | D3DCREATE_MULTITHREADED | D3DCREATE_FPU_PRESERVE,
-                                     &pp, NULL, &pDevice));
+    CHECK_HR(hr = m_pD3D9->CreateDeviceEx(
+        uAdapterID,
+        D3DDEVTYPE_HAL,
+        pp.hDeviceWindow,
+        vp | D3DCREATE_NOWINDOWCHANGES | D3DCREATE_MULTITHREADED | D3DCREATE_FPU_PRESERVE ,
+        &pp, 
+        NULL,
+        &pDevice
+        ));
+
+	
 
     // Get the adapter display mode.
     CHECK_HR(hr = m_pD3D9->GetAdapterDisplayMode(uAdapterID, &m_DisplayMode));
 
-    // Reset the D3DDeviceManager with the new device
+    // Reset the D3DDeviceManager with the new device 
     CHECK_HR(hr = m_pDeviceManager->ResetDevice(pDevice, m_DeviceResetToken));
+
+	
 
     SAFE_RELEASE(m_pDevice);
 
@@ -565,14 +641,16 @@ done:
     return hr;
 }
 
+
 //-----------------------------------------------------------------------------
 // CreateD3DSample
 //
 // Creates an sample object (IMFSample) to hold a Direct3D swap chain.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::CreateD3DSample(IDirect3DSwapChain9* pSwapChain, IMFSample** ppVideoSample) {
-    // Caller holds the object lock.
+HRESULT D3DPresentEngine::CreateD3DSample(IDirect3DSwapChain9 *pSwapChain, IMFSample **ppVideoSample)
+{
+    // Caller holds the object lock.	
 
     HRESULT hr = S_OK;
     D3DCOLOR clrBlack = D3DCOLOR_ARGB(0xFF, 0x00, 0x00, 0x00);
@@ -608,52 +686,58 @@ done:
 // pSurface: Pointer to the swap chain's back buffer surface.
 
 //
-// Note: This method simply calls IDirect3DSwapChain9::Present, but a derived
+// Note: This method simply calls IDirect3DSwapChain9::Present, but a derived 
 // class could do something fancier.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::PresentSwapChain(IDirect3DSwapChain9* pSwapChain, IDirect3DSurface9* pSurface) {
-    //-----------------------------------------------------------------------------
-    // Copy latest D3D frame to our OpenGL/D3D shared surface...
+HRESULT D3DPresentEngine::PresentSwapChain(IDirect3DSwapChain9* pSwapChain, IDirect3DSurface9* pSurface)
+{
+	//-----------------------------------------------------------------------------
+	// Copy latest D3D frame to our OpenGL/D3D shared surface...
 
-    // pSwapChain->GetFrontBufferData(d3d_shared_surface);
-    IDirect3DSurface9* surface;
-    pSwapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &surface);
-    if (m_pDevice->StretchRect(surface, NULL, d3d_shared_surface, NULL, D3DTEXF_NONE) != D3D_OK) {
-        CI_LOG_E("Error while copying texture to gl context");
-        // printf("ciWMFVideoplayer: Error while copying texture to gl context \n");
-    }
-    SAFE_RELEASE(surface);
+	//pSwapChain->GetFrontBufferData(d3d_shared_surface);
+	IDirect3DSurface9 *surface;
+	pSwapChain->GetBackBuffer(0,D3DBACKBUFFER_TYPE_MONO,&surface);
+    if (m_pDevice->StretchRect(surface,NULL,d3d_shared_surface,NULL,D3DTEXF_NONE) != D3D_OK)
+	{
+		CI_LOG_E("Error while copying texture to gl context");
+		//printf("ciWMFVideoplayer: Error while copying texture to gl context \n");
+	}
+	SAFE_RELEASE(surface);
 
-    //-----------------------------------------------------------------------------
-    // Original code from the WMF EVRpresenter sample code...
+	//-----------------------------------------------------------------------------
+	// Original code from the WMF EVRpresenter sample code...
 
-    HRESULT hr = S_OK;
-
-    if (m_hwnd == NULL) {
+	HRESULT hr = S_OK;
+	
+	if (m_hwnd == NULL)
+    {
         return MF_E_INVALIDREQUEST;
     }
-
+	
     hr = pSwapChain->Present(NULL, &m_rcDestRect, m_hwnd, NULL, 0);
-
+	
     LOG_MSG_IF_FAILED(L"D3DPresentEngine::PresentSwapChain, IDirect3DSwapChain9::Present failed.", hr);
-
+	
     return hr;
 }
 
 //-----------------------------------------------------------------------------
 // PaintFrameWithGDI
-//
+// 
 // Fills the destination rectangle with black.
 //-----------------------------------------------------------------------------
 
-void D3DPresentEngine::PaintFrameWithGDI() {
+void D3DPresentEngine::PaintFrameWithGDI()
+{
     HDC hdc = GetDC(m_hwnd);
 
-    if (hdc) {
+    if (hdc)
+    {
         HBRUSH hBrush = CreateSolidBrush(RGB(0, 0, 0));
 
-        if (hBrush) {
+        if (hBrush)
+        {
             FillRect(hdc, &m_rcDestRect, hBrush);
             DeleteObject(hBrush);
         }
@@ -662,6 +746,7 @@ void D3DPresentEngine::PaintFrameWithGDI() {
     }
 }
 
+
 //-----------------------------------------------------------------------------
 // GetSwapChainPresentParameters
 //
@@ -669,10 +754,11 @@ void D3DPresentEngine::PaintFrameWithGDI() {
 // D3DPRESENT_PARAMETERS for creating a swap chain.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::GetSwapChainPresentParameters(IMFMediaType* pType, D3DPRESENT_PARAMETERS* pPP) {
+HRESULT D3DPresentEngine::GetSwapChainPresentParameters(IMFMediaType *pType, D3DPRESENT_PARAMETERS* pPP)
+{
     // Caller holds the object lock.
 
-    HRESULT hr = S_OK;
+    HRESULT hr = S_OK; 
 
     UINT32 width = 0, height = 0;
     DWORD d3dFormat = 0;
@@ -680,7 +766,8 @@ HRESULT D3DPresentEngine::GetSwapChainPresentParameters(IMFMediaType* pType, D3D
     // Helper object for reading the proposed type.
     VideoType videoType(pType);
 
-    if (m_hwnd == NULL) {
+    if (m_hwnd == NULL)
+    {
         return MF_E_INVALIDREQUEST;
     }
 
@@ -702,14 +789,16 @@ HRESULT D3DPresentEngine::GetSwapChainPresentParameters(IMFMediaType* pType, D3D
 
     D3DDEVICE_CREATION_PARAMETERS params;
     CHECK_HR(hr = m_pDevice->GetCreationParameters(&params));
-
-    if (params.DeviceType != D3DDEVTYPE_HAL) {
+    
+    if (params.DeviceType != D3DDEVTYPE_HAL)
+    {
         pPP->Flags |= D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
     }
 
 done:
     return S_OK;
 }
+
 
 //-----------------------------------------------------------------------------
 // UpdateDestRect
@@ -721,20 +810,25 @@ done:
 // rectangle.
 //-----------------------------------------------------------------------------
 
-HRESULT D3DPresentEngine::UpdateDestRect() {
-    if (m_hwnd == NULL) {
+HRESULT D3DPresentEngine::UpdateDestRect()
+{
+    if (m_hwnd == NULL)
+    {
         return S_FALSE;
     }
+
 
     RECT rcView;
     GetClientRect(m_hwnd, &rcView);
 
     // Clip the destination rectangle to the window's client area.
-    if (m_rcDestRect.right > rcView.right) {
+    if (m_rcDestRect.right > rcView.right)
+    {
         m_rcDestRect.right = rcView.right;
     }
 
-    if (m_rcDestRect.bottom > rcView.bottom) {
+    if (m_rcDestRect.bottom > rcView.bottom)
+    {
         m_rcDestRect.bottom = rcView.bottom;
     }
 
@@ -748,29 +842,34 @@ HRESULT D3DPresentEngine::UpdateDestRect() {
 //-----------------------------------------------------------------------------
 // FindAdapter
 //
-// Given a handle to a monitor, returns the ordinal number that D3D uses to
+// Given a handle to a monitor, returns the ordinal number that D3D uses to 
 // identify the adapter.
 //-----------------------------------------------------------------------------
 
-HRESULT FindAdapter(IDirect3D9* pD3D9, HMONITOR hMonitor, UINT* puAdapterID) {
+HRESULT FindAdapter(IDirect3D9 *pD3D9, HMONITOR hMonitor, UINT *puAdapterID)
+{
     HRESULT hr = E_FAIL;
     UINT cAdapters = 0;
     UINT uAdapterID = (UINT)-1;
 
     cAdapters = pD3D9->GetAdapterCount();
-    for (UINT i = 0; i < cAdapters; i++) {
+    for (UINT i = 0; i < cAdapters; i++)
+    {
         HMONITOR hMonitorTmp = pD3D9->GetAdapterMonitor(i);
 
-        if (hMonitorTmp == NULL) {
+        if (hMonitorTmp == NULL)
+        {
             break;
         }
-        if (hMonitorTmp == hMonitor) {
+        if (hMonitorTmp == hMonitor)
+        {
             uAdapterID = i;
             break;
         }
     }
 
-    if (uAdapterID != (UINT)-1) {
+    if (uAdapterID != (UINT)-1)
+    {
         *puAdapterID = uAdapterID;
         hr = S_OK;
     }

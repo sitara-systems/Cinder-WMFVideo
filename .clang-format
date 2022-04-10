@@ -4,3 +4,4 @@ BasedOnStyle: Chromium
 IndentWidth: 4
 IncludeBlocks: Regroup
 ColumnLimit: 120
+SortIncludes: false
